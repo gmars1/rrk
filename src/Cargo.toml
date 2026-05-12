@@ -1,0 +1,38 @@
+[package]
+name = "key-optimizer"
+version = "1.0.0"
+edition = "2021"
+description = "Keyboard layout optimizer — correct, minimal, cross‑platform"
+
+[lib]
+name = "key_optimizer"
+path = "lib.rs"
+
+[[bin]]
+name = "key-optimizer"
+path = "main.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+once_cell = "1.19"
+rand = { version = "0.8", features = ["small_rng"] }
+rand_chacha = "0.3"
+
+eframe = { version = "0.28", default-features = false, features = ["glow"] }
+egui = "0.28"
+egui_plot = "0.28"
+tokio = { version = "1", features = ["sync"] }
+dirs = "5.0"
+fastrand = "2.0"
+ctrlc = "3.4"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = "0.12"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.9"
