@@ -100,9 +100,20 @@ impl App {
         for (char_id, weight) in &heat {
             for (kid, ch) in &self.layout_state.mapping {
                 if &char_id.as_char() == &ch.to_lowercase().next().unwrap_or(*ch) {
-                    map.insert(kid.0, *weight);
+                    let entry = map.entry(kid.0).or_insert(0.0f32);
+                    *entry = entry.max(*weight);
                 }
             }
+        }
+        // Re-normalize by max of only mapped keys
+        let local_max = map
+            .values()
+            .copied()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or(1.0)
+            .max(0.001);
+        for v in map.values_mut() {
+            *v /= local_max;
         }
         map
     }
