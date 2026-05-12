@@ -73,6 +73,20 @@ impl App {
             last_event_time: Instant::now(),
             evdev_alive: false,
         }
+        .auto_detect_layout()
+    }
+
+    fn auto_detect_layout(mut self) -> Self {
+        let detected = detect_system_layout();
+        if let Some(ref id) = detected {
+            for (i, kb) in self.keyboards.iter().enumerate() {
+                if &kb.id == id {
+                    self.switch_layout(i);
+                    break;
+                }
+            }
+        }
+        self
     }
 
     fn current_keyboard(&self) -> &PhysicalKeyboard {
@@ -220,6 +234,45 @@ impl App {
             );
         }
     }
+}
+
+fn detect_system_layout() -> Option<String> {
+    // Try setxkbmap -query (works on X11 and some Wayland compositors)
+    if let Ok(out) = std::process::Command::new("setxkbmap")
+        .arg("-query")
+        .output()
+    {
+        if let Ok(text) = String::from_utf8(out.stdout) {
+            for line in text.lines() {
+                let line = line.trim();
+                if let Some(val) = line.strip_prefix("layout:") {
+                    let id = val.trim().split(',').next().unwrap_or("").trim();
+                    let mapped = match id {
+                        "us" | "us(intl)" => "qwerty",
+                        "ru" | "ru( phonetic)" => "ru",
+                        "gb" | "uk" => "qwerty",
+                        "de" => "qwerty",
+                        "fr" => "qwerty",
+                        other => other,
+                    };
+                    return Some(mapped.to_string());
+                }
+            }
+        }
+    }
+
+    // Fallback: XKB_DEFAULT_LAYOUT env var
+    if let Ok(var) = std::env::var("XKB_DEFAULT_LAYOUT") {
+        let id = var.split(',').next().unwrap_or("").trim();
+        let mapped = match id {
+            "us" => "qwerty",
+            "ru" => "ru",
+            other => other,
+        };
+        return Some(mapped.to_string());
+    }
+
+    None
 }
 
 impl Drop for App {
