@@ -73,16 +73,16 @@ impl WinListener {
                     }
                 };
 
-            let mut msg = MSG::default();
+            let mut msg: MSG;
             while !stop_flag.load(Ordering::Relaxed) {
                 msg = MSG::default();
                 if PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
-                    TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
-                } else {
                     if msg.message == WM_QUIT {
                         break;
                     }
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                } else {
                     thread::sleep(Duration::from_millis(10));
                 }
             }
