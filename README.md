@@ -2,6 +2,8 @@
 
 Keyboard layout heatmap tracker and layout optimizer. Records your typing patterns, displays a live color-coded heatmap, and uses simulated annealing to find better key arrangements.
 
+![example](imgs/example.png)
+
 ## OS support overview
 
 | Feature | Linux | macOS | Windows |
