@@ -12,6 +12,7 @@ fn load_builtin_layouts() -> Vec<PhysicalKeyboard> {
     let builtins = [
         include_str!("assets/layouts/qwerty.json"),
         include_str!("assets/layouts/colemak.json"),
+        include_str!("assets/layouts/ru.json"),
     ];
     for json in &builtins {
         if let Ok(mut kb) = serde_json::from_str::<PhysicalKeyboard>(json) {
