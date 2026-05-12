@@ -15,13 +15,13 @@ impl KeyId {
 
 /// Compact identifier for a character (used in bigrams).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct CharId(pub usize);
+pub struct CharId(pub char);
 
 impl CharId {
-    pub fn new(v: usize) -> Self {
+    pub fn new(v: char) -> Self {
         Self(v)
     }
-    pub fn as_usize(self) -> usize {
+    pub fn as_char(self) -> char {
         self.0
     }
 }

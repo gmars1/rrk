@@ -41,7 +41,7 @@ pub struct StaticContext<'a> {
 }
 
 /// Compute the total score for a given layout state.
-pub fn compute_score(ctx: &StaticContext, _state: &LayoutState) -> f64 {
+pub fn compute_score(ctx: &StaticContext, state: &LayoutState) -> f64 {
     let total_events = ctx.stats.total_events() as f64;
     if total_events < 1.0 {
         return 0.0;
@@ -55,11 +55,19 @@ pub fn compute_score(ctx: &StaticContext, _state: &LayoutState) -> f64 {
     let mut score = 0.0f64;
     for (char_id, &count) in &stats.counts {
         let freq = count as f64 / total_for_stats;
-        let kid = KeyId::new(char_id.as_usize());
-        if let Some(key) = ctx.keyboard.find_by_id(kid.0) {
-            let pos_x = key.x as f64;
-            let pos_y = key.y as f64;
-            score += freq * (pos_x + pos_y) as f64;
+        let mut key_id: Option<KeyId> = None;
+        for (kid, ch) in &state.mapping {
+            if ch.to_lowercase().next().unwrap_or(*ch) == char_id.as_char() {
+                key_id = Some(*kid);
+                break;
+            }
+        }
+        if let Some(kid) = key_id {
+            if let Some(key) = ctx.keyboard.find_by_id(kid.0) {
+                let pos_x = key.x as f64;
+                let pos_y = key.y as f64;
+                score += freq * (pos_x + pos_y) as f64;
+            }
         }
     }
     score / key_count.max(1.0)

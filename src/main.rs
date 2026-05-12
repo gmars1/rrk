@@ -31,8 +31,7 @@ fn build_mappings(kb: &PhysicalKeyboard) -> std::collections::HashMap<u16, char>
             continue;
         }
         let ch = k.label.chars().next().unwrap();
-        let ch_lower = ch.to_ascii_lowercase();
-        if ch_lower != ' ' && !ch_lower.is_ascii_alphabetic() {
+        if ch != ' ' && !ch.is_alphabetic() {
             continue;
         }
         let sc = k.scan_codes.linux_evdev;
@@ -67,15 +66,11 @@ fn run_daemon() -> Result<(), Box<dyn std::error::Error>> {
     while running.load(Ordering::Relaxed) {
         while let Ok(CoreEvent::KeyPress(sc)) = rx.try_recv() {
             if let Some(&ch) = sc_map.get(&sc) {
-                let lower = ch.to_ascii_lowercase();
-                let idx = if lower == ' ' {
-                    26usize
-                } else if lower.is_ascii_alphabetic() {
-                    (lower as u8 - b'a') as usize
-                } else {
+                let lower = ch.to_lowercase().next().unwrap_or(ch);
+                if lower != ' ' && !lower.is_alphabetic() {
                     continue;
-                };
-                stats.record_unigram(key_optimizer::core::id::CharId::new(idx));
+                }
+                stats.record_unigram(key_optimizer::core::id::CharId::new(lower));
             }
         }
 

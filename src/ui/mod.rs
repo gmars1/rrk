@@ -33,14 +33,10 @@ impl App {
                 continue;
             }
             let ch = k.label.chars().next().unwrap();
-            let ch_lower = ch.to_ascii_lowercase();
-            let cid = if ch_lower == ' ' {
-                CharId::new(26)
-            } else if ch_lower.is_ascii_alphabetic() {
-                CharId::new((ch_lower as u8 - b'a') as usize)
-            } else {
+            if ch != ' ' && !ch.is_alphabetic() {
                 continue;
-            };
+            }
+            let cid = CharId::new(ch.to_lowercase().next().unwrap_or(ch));
             mapping.insert(KeyId::new(k.id), ch);
             let sc = k.scan_codes.linux_evdev;
             if sc != 0 {
@@ -89,13 +85,7 @@ impl App {
         let mut map = HashMap::new();
         for (char_id, weight) in &heat {
             for (kid, ch) in &self.layout_state.mapping {
-                let ch_lower = ch.to_ascii_lowercase();
-                let expected = if ch_lower == ' ' {
-                    26
-                } else {
-                    (ch_lower as u8).wrapping_sub(b'a') as usize
-                };
-                if char_id.as_usize() == expected {
+                if &char_id.as_char() == &ch.to_lowercase().next().unwrap_or(*ch) {
                     map.insert(kid.0, *weight);
                 }
             }
@@ -104,14 +94,11 @@ impl App {
     }
 
     fn record_char(&mut self, ch: char) {
-        let ch_lower = ch.to_ascii_lowercase();
-        let cid = if ch_lower == ' ' {
-            CharId::new(26)
-        } else if ch_lower.is_ascii_alphabetic() {
-            CharId::new((ch_lower as u8 - b'a') as usize)
-        } else {
+        let ch_lower = ch.to_lowercase().next().unwrap_or(ch);
+        if ch_lower != ' ' && !ch_lower.is_alphabetic() {
             return;
-        };
+        }
+        let cid = CharId::new(ch_lower);
         let mut stats = self.stats.lock().unwrap();
         stats.record_unigram(cid);
         if let Some(prev) = self.previous_char {
@@ -126,10 +113,7 @@ impl App {
             had_real = true;
             let CoreEvent::KeyPress(sc) = event;
             if let Some(&cid) = self.scan_to_char.get(&sc) {
-                self.record_char(match cid.as_usize() {
-                    26 => ' ',
-                    n => (n as u8 + b'a') as char,
-                });
+                self.record_char(cid.as_char());
             }
         }
 
@@ -259,35 +243,35 @@ mod tests {
         let (mapping, scan_to_char) = App::build_mappings(&kb);
 
         // Letter keys should map correctly
-        assert_eq!(scan_to_char.get(&30), Some(&CharId::new(0))); // KEY_A -> 'a'
-        assert_eq!(scan_to_char.get(&48), Some(&CharId::new(1))); // KEY_B -> 'b'
-        assert_eq!(scan_to_char.get(&46), Some(&CharId::new(2))); // KEY_C -> 'c'
-        assert_eq!(scan_to_char.get(&32), Some(&CharId::new(3))); // KEY_D -> 'd'
-        assert_eq!(scan_to_char.get(&18), Some(&CharId::new(4))); // KEY_E -> 'e'
-        assert_eq!(scan_to_char.get(&33), Some(&CharId::new(5))); // KEY_F -> 'f'
-        assert_eq!(scan_to_char.get(&34), Some(&CharId::new(6))); // KEY_G -> 'g'
-        assert_eq!(scan_to_char.get(&35), Some(&CharId::new(7))); // KEY_H -> 'h'
-        assert_eq!(scan_to_char.get(&23), Some(&CharId::new(8))); // KEY_I -> 'i'
-        assert_eq!(scan_to_char.get(&36), Some(&CharId::new(9))); // KEY_J -> 'j'
-        assert_eq!(scan_to_char.get(&37), Some(&CharId::new(10))); // KEY_K -> 'k'
-        assert_eq!(scan_to_char.get(&38), Some(&CharId::new(11))); // KEY_L -> 'l'
-        assert_eq!(scan_to_char.get(&50), Some(&CharId::new(12))); // KEY_M -> 'm'
-        assert_eq!(scan_to_char.get(&49), Some(&CharId::new(13))); // KEY_N -> 'n'
-        assert_eq!(scan_to_char.get(&24), Some(&CharId::new(14))); // KEY_O -> 'o'
-        assert_eq!(scan_to_char.get(&25), Some(&CharId::new(15))); // KEY_P -> 'p'
-        assert_eq!(scan_to_char.get(&16), Some(&CharId::new(16))); // KEY_Q -> 'q'
-        assert_eq!(scan_to_char.get(&19), Some(&CharId::new(17))); // KEY_R -> 'r'
-        assert_eq!(scan_to_char.get(&31), Some(&CharId::new(18))); // KEY_S -> 's'
-        assert_eq!(scan_to_char.get(&20), Some(&CharId::new(19))); // KEY_T -> 't'
-        assert_eq!(scan_to_char.get(&22), Some(&CharId::new(20))); // KEY_U -> 'u'
-        assert_eq!(scan_to_char.get(&47), Some(&CharId::new(21))); // KEY_V -> 'v'
-        assert_eq!(scan_to_char.get(&17), Some(&CharId::new(22))); // KEY_W -> 'w'
-        assert_eq!(scan_to_char.get(&45), Some(&CharId::new(23))); // KEY_X -> 'x'
-        assert_eq!(scan_to_char.get(&21), Some(&CharId::new(24))); // KEY_Y -> 'y'
-        assert_eq!(scan_to_char.get(&44), Some(&CharId::new(25))); // KEY_Z -> 'z'
+        assert_eq!(scan_to_char.get(&30), Some(&CharId::new('a'))); // KEY_A -> 'a'
+        assert_eq!(scan_to_char.get(&48), Some(&CharId::new('b'))); // KEY_B -> 'b'
+        assert_eq!(scan_to_char.get(&46), Some(&CharId::new('c'))); // KEY_C -> 'c'
+        assert_eq!(scan_to_char.get(&32), Some(&CharId::new('d'))); // KEY_D -> 'd'
+        assert_eq!(scan_to_char.get(&18), Some(&CharId::new('e'))); // KEY_E -> 'e'
+        assert_eq!(scan_to_char.get(&33), Some(&CharId::new('f'))); // KEY_F -> 'f'
+        assert_eq!(scan_to_char.get(&34), Some(&CharId::new('g'))); // KEY_G -> 'g'
+        assert_eq!(scan_to_char.get(&35), Some(&CharId::new('h'))); // KEY_H -> 'h'
+        assert_eq!(scan_to_char.get(&23), Some(&CharId::new('i'))); // KEY_I -> 'i'
+        assert_eq!(scan_to_char.get(&36), Some(&CharId::new('j'))); // KEY_J -> 'j'
+        assert_eq!(scan_to_char.get(&37), Some(&CharId::new('k'))); // KEY_K -> 'k'
+        assert_eq!(scan_to_char.get(&38), Some(&CharId::new('l'))); // KEY_L -> 'l'
+        assert_eq!(scan_to_char.get(&50), Some(&CharId::new('m'))); // KEY_M -> 'm'
+        assert_eq!(scan_to_char.get(&49), Some(&CharId::new('n'))); // KEY_N -> 'n'
+        assert_eq!(scan_to_char.get(&24), Some(&CharId::new('o'))); // KEY_O -> 'o'
+        assert_eq!(scan_to_char.get(&25), Some(&CharId::new('p'))); // KEY_P -> 'p'
+        assert_eq!(scan_to_char.get(&16), Some(&CharId::new('q'))); // KEY_Q -> 'q'
+        assert_eq!(scan_to_char.get(&19), Some(&CharId::new('r'))); // KEY_R -> 'r'
+        assert_eq!(scan_to_char.get(&31), Some(&CharId::new('s'))); // KEY_S -> 's'
+        assert_eq!(scan_to_char.get(&20), Some(&CharId::new('t'))); // KEY_T -> 't'
+        assert_eq!(scan_to_char.get(&22), Some(&CharId::new('u'))); // KEY_U -> 'u'
+        assert_eq!(scan_to_char.get(&47), Some(&CharId::new('v'))); // KEY_V -> 'v'
+        assert_eq!(scan_to_char.get(&17), Some(&CharId::new('w'))); // KEY_W -> 'w'
+        assert_eq!(scan_to_char.get(&45), Some(&CharId::new('x'))); // KEY_X -> 'x'
+        assert_eq!(scan_to_char.get(&21), Some(&CharId::new('y'))); // KEY_Y -> 'y'
+        assert_eq!(scan_to_char.get(&44), Some(&CharId::new('z'))); // KEY_Z -> 'z'
 
         // Space
-        assert_eq!(scan_to_char.get(&57), Some(&CharId::new(26))); // KEY_SPACE -> ' '
+        assert_eq!(scan_to_char.get(&57), Some(&CharId::new(' '))); // KEY_SPACE -> ' '
 
         // Modifier keys should NOT be in the mapping
         assert!(scan_to_char.get(&42).is_none()); // KEY_LEFTSHIFT
