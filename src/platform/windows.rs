@@ -45,11 +45,11 @@ impl WinListener {
     }
 
     unsafe extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-        if code == HC_ACTION {
+        if code == HC_ACTION as i32 {
             let kb = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
             let msg = wparam.0 as u32;
             if msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN {
-                let is_extended = (kb.flags & LLKHF_EXTENDED) != 0;
+                let is_extended = (kb.flags.0 & LLKHF_EXTENDED.0) != 0;
                 if let Some(evdev) = Self::map_scan_code(kb.scanCode as u16, is_extended) {
                     if let Some(tx) = EVENT_TX.lock().unwrap().as_ref() {
                         let _ = tx.send(CoreEvent::KeyPress(evdev));
@@ -64,12 +64,14 @@ impl WinListener {
         unsafe {
             *EVENT_TX.lock().unwrap() = Some(tx);
 
-            let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(Self::hook_proc), HINSTANCE(0), 0);
-
-            if hook.0 == 0 {
-                *EVENT_TX.lock().unwrap() = None;
-                return;
-            }
+            let hook =
+                match SetWindowsHookExW(WH_KEYBOARD_LL, Some(Self::hook_proc), HINSTANCE(0), 0) {
+                    Ok(h) => h,
+                    Err(_) => {
+                        *EVENT_TX.lock().unwrap() = None;
+                        return;
+                    }
+                };
 
             let mut msg = MSG::default();
             while !stop_flag.load(Ordering::Relaxed) {
@@ -85,7 +87,7 @@ impl WinListener {
                 }
             }
 
-            UnhookWindowsHookEx(hook);
+            let _ = UnhookWindowsHookEx(hook);
             *EVENT_TX.lock().unwrap() = None;
         }
     }
