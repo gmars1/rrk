@@ -1,105 +1,103 @@
-# Keyboard Layout Optimizer
+# key-optimizer
 
-Tracks which keys you press most and displays a live heat map. Helps you decide which layout (QWERTY, Colemak, etc.) suits your typing patterns.
+Keyboard layout heatmap tracker and layout optimizer. Records your typing patterns, displays a live color-coded heatmap, and uses simulated annealing to find better key arrangements.
 
-## Installation
+## OS support overview
 
-### Linux (x86_64)
+| Feature | Linux | macOS | Windows |
+|---|---|---|---|
+| GUI heatmap viewer | ✅ | ✅ | ✅ |
+| Background daemon (real keystrokes) | ✅ evdev | ❌ stub | ❌ stub |
+| UI live capture (typing into window) | ✅ | ✅ | ✅ |
+| Layout switching (QWERTY / Colemak) | ✅ | ✅ | ✅ |
+| Layout optimization | ✅ | ✅ | ✅ |
 
-**Arch:**
+**Note:** macOS and Windows platform listeners are stubs that emit dummy events. Real keystroke capture is only implemented on Linux. The GUI still works everywhere — you can type into the window and see heatmap updates.
+
+## Build
+
+Requires [Rust](https://rustup.rs/) (edition 2021).
+
 ```sh
-# Dependencies
-sudo pacman -S rust libevdev libglvnd glib2 libxkbcommon wayland \
-  libx11 libxcursor libxi libxrandr mesa
-
-# Build
-git clone https://github.com/YOUR_USER/keyboard-letters-manager
-cd keyboard-letters-manager
+git clone <repo-url>
+cd keyboard_letters__manager
 cargo build --release
 ```
+
+Binary: `target/release/key-optimizer` (or `key-optimizer.exe` on Windows).
+
+### Linux — system dependencies
 
 **Ubuntu / Debian:**
 ```sh
-sudo apt install libevdev-dev libegl1-mesa-dev libgles2-mesa-dev \
-  libglib2.0-dev libxkbcommon-dev libwayland-dev libx11-dev \
-  libxcursor-dev libxi-dev libxrandr-dev
-
-git clone https://github.com/YOUR_USER/keyboard-letters-manager
-cd keyboard-letters-manager
-cargo build --release
+sudo apt install -y \
+  libevdev-dev \
+  libegl1-mesa-dev libgles2-mesa-dev \
+  libglib2.0-dev \
+  libxkbcommon-dev libwayland-dev \
+  libx11-dev libxcursor-dev libxi-dev libxrandr-dev
 ```
 
-Pre-built binaries are available from [GitHub Releases](https://github.com/YOUR_USER/keyboard-letters-manager/releases).
-
-### Windows
-
-Download `key-optimizer-windows.exe` from Releases and run it.
+**Arch:**
+```sh
+sudo pacman -S --noconfirm \
+  rust libevdev libglvnd glib2 libxkbcommon wayland \
+  libx11 libxcursor libxi libxrandr mesa
+```
 
 ### macOS
 
-Currently not implemented (platform listener is a stub).
-
-## Usage
-
-### Linux (native)
-
-**Daemon mode** — collects keystrokes in the background:
 ```sh
-# Make sure you're in the input group for evdev access
-sudo usermod -a -G input $USER
-# Log out and back in, then:
-./target/release/key-optimizer --daemon &
-
-# Later, open the UI to see stats:
-./target/release/key-optimizer
+xcode-select --install
 ```
 
-**UI-only mode** — captures keystrokes through the window:
-```sh
-./target/release/key-optimizer
-```
-
-If you're not in the `input` group, the daemon will idle (no data), but UI mode still works via window input.
-
-### WSL2 (Windows Subsystem for Linux)
-
-WSL has no `/dev/input/` devices, so daemon mode won't capture keystrokes. Use UI mode instead:
-
-```sh
-./target/release/key-optimizer
-```
-
-Type in the window — all keystrokes are captured through WSLg/Wayland.
+No extra libraries needed.
 
 ### Windows
 
-Run the `.exe` — keystrokes are captured through the window.
+Install Rust via [rustup.rs](https://rustup.rs/). Build with the MSVC toolchain — no extra libraries needed.
 
-## Features
+## Usage
 
-| Feature | Linux | WSL | Windows |
-|---------|-------|-----|---------|
-| Daemon (background) | ✓ (evdev) | ✗ | ✗ |
-| UI live capture | ✓ | ✓ | ✓ |
-| Heat map | ✓ | ✓ | ✓ |
-| Layout switching | ✓ | ✓ | ✓ |
+### GUI mode (all OS)
 
-- **Heat map** — keys turn red (most used) to green (least used)
-- **Layout switcher** — toggle between QWERTY and Colemak; stats remap automatically
-- **Persistence** — stats saved to `~/.config/key-optimizer/stats.json`, loaded on restart
-- **Daemon** — `--daemon` flag runs headlessly; saves every 30s; Ctrl+C for clean shutdown
+```sh
+key-optimizer
+```
+
+Opens a window with a color-coded keyboard (red = heavy use, green = light use). Type into the window to feed it text. Switch between QWERTY and Colemak with the dropdown.
+
+### Daemon mode (Linux only)
+
+```sh
+key-optimizer --daemon
+```
+
+Collects real keystrokes in the background. Requires read access to `/dev/input/event*`:
+```sh
+sudo usermod -a -G input $USER
+# log out and back in, then run the daemon
+```
+
+Stats auto-save every 30 seconds. Stop with Ctrl+C. Launch the GUI later to view the collected data.
+
+### WSL2
+
+No `/dev/input/` devices, so daemon mode is unavailable. GUI mode works through WSLg:
+
+```sh
+key-optimizer
+```
+
+## Data
+
+Stats persist as JSON at:
+- **Linux:** `~/.config/key-optimizer/stats.json`
+- **macOS:** `~/Library/Application Support/key-optimizer/stats.json`
+- **Windows:** `C:\Users\<you>\AppData\Roaming\key-optimizer\stats.json`
+
+Delete or edit this file to reset or inject stats manually.
 
 ## Layouts
 
-Built-in: QWERTY (US), Colemak.
-
-Add your own by placing a JSON file in the `layouts/` directory (format matches the built-in layouts).
-
-## Building
-
-```sh
-git clone https://github.com/YOUR_USER/keyboard-letters-manager
-cd keyboard-letters-manager
-cargo build --release
-./target/release/key-optimizer --help
-```
+Built-in: QWERTY (US) and Colemak. Layouts are JSON files embedded at compile time from `src/assets/layouts/`.
