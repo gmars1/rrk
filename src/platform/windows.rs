@@ -1,13 +1,17 @@
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc,
+    Arc, Mutex,
 };
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use tokio::sync::broadcast;
+use windows::Win32::Foundation::*;
+use windows::Win32::UI::WindowsAndMessaging::*;
 
 use super::{CoreEvent, Error, Listener};
+
+static EVENT_TX: Mutex<Option<broadcast::Sender<CoreEvent>>> = Mutex::new(None);
 
 pub struct WinListener {
     tx: broadcast::Sender<CoreEvent>,
@@ -25,10 +29,64 @@ impl WinListener {
         })
     }
 
+    fn map_scan_code(make_code: u16, is_extended: bool) -> Option<u16> {
+        if is_extended {
+            match make_code {
+                0x1D => Some(97),  // Right Ctrl   → KEY_RIGHTCTRL
+                0x38 => Some(100), // Right Alt    → KEY_RIGHTALT
+                0x5B => Some(125), // Left Win     → KEY_LEFTMETA
+                0x5C => Some(126), // Right Win    → KEY_RIGHTMETA
+                0x5D => Some(127), // Menu/Apps    → KEY_COMPOSE
+                _ => None,
+            }
+        } else {
+            Some(make_code)
+        }
+    }
+
+    unsafe extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+        if code == HC_ACTION {
+            let kb = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
+            let msg = wparam.0 as u32;
+            if msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN {
+                let is_extended = (kb.flags & LLKHF_EXTENDED) != 0;
+                if let Some(evdev) = Self::map_scan_code(kb.scanCode as u16, is_extended) {
+                    if let Some(tx) = EVENT_TX.lock().unwrap().as_ref() {
+                        let _ = tx.send(CoreEvent::KeyPress(evdev));
+                    }
+                }
+            }
+        }
+        CallNextHookEx(HHOOK::default(), code, wparam, lparam)
+    }
+
     fn run(stop_flag: Arc<AtomicBool>, tx: broadcast::Sender<CoreEvent>) {
-        while !stop_flag.load(Ordering::SeqCst) {
-            let _ = tx.send(CoreEvent::KeyPress(0));
-            thread::sleep(Duration::from_secs(1));
+        unsafe {
+            *EVENT_TX.lock().unwrap() = Some(tx);
+
+            let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(Self::hook_proc), HINSTANCE(0), 0);
+
+            if hook.0 == 0 {
+                *EVENT_TX.lock().unwrap() = None;
+                return;
+            }
+
+            let mut msg = MSG::default();
+            while !stop_flag.load(Ordering::Relaxed) {
+                msg = MSG::default();
+                if PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                } else {
+                    if msg.message == WM_QUIT {
+                        break;
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                }
+            }
+
+            UnhookWindowsHookEx(hook);
+            *EVENT_TX.lock().unwrap() = None;
         }
     }
 }
