@@ -22,6 +22,7 @@ pub struct App {
     previous_char: Option<CharId>,
     last_event_time: Instant,
     evdev_alive: bool,
+    show_freq: bool,
 }
 
 impl App {
@@ -72,6 +73,7 @@ impl App {
             previous_char: None,
             last_event_time: Instant::now(),
             evdev_alive: false,
+            show_freq: false,
         }
         .auto_detect_layout()
     }
@@ -201,6 +203,10 @@ impl eframe::App for App {
                 ui.separator();
                 let total = self.stats.lock().unwrap().total_events();
                 ui.label(format!("Events: {}", total));
+                ui.separator();
+                if ui.button("📊").clicked() {
+                    self.show_freq = !self.show_freq;
+                }
             });
         });
 
@@ -208,60 +214,66 @@ impl eframe::App for App {
             self.draw_heatmap(ui);
         });
 
-        egui::TopBottomPanel::bottom("freq_panel").show(ctx, |ui| {
-            ui.add_space(4.0);
-            ui.label("Letter frequencies:");
-            let stats = self.stats.lock().unwrap();
-            let total = stats.unigrams.total();
-            if total > 0 {
-                let mut entries: Vec<(char, u64)> = stats
-                    .unigrams
-                    .counts
-                    .iter()
-                    .map(|(cid, &c)| (cid.as_char(), c))
-                    .collect();
-                entries.sort_by(|a, b| b.1.cmp(&a.1));
-                let max_w = ui.available_width() - 160.0;
-                ui.group(|ui| {
-                    egui::ScrollArea::horizontal().show(ui, |ui| {
-                        egui::Grid::new("freq_grid")
-                            .striped(true)
-                            .min_col_width(30.0)
-                            .show(ui, |ui| {
-                                ui.strong("Char");
-                                ui.strong("Count");
-                                ui.strong("%");
-                                ui.strong("");
+        if self.show_freq {
+            let layout_chars: std::collections::HashSet<char> = self
+                .layout_state
+                .mapping
+                .values()
+                .map(|ch| ch.to_lowercase().next().unwrap_or(*ch))
+                .collect();
+
+            egui::Window::new("Letter frequencies")
+                .id("freq_window".into())
+                .default_size([400.0, 300.0])
+                .show(ctx, |ui| {
+                    let stats = self.stats.lock().unwrap();
+                    let total = stats.unigrams.total();
+                    if total == 0 {
+                        ui.label("(no data yet)");
+                        return;
+                    }
+                    let mut entries: Vec<(char, u64)> = stats
+                        .unigrams
+                        .counts
+                        .iter()
+                        .filter(|(cid, _)| layout_chars.contains(&cid.as_char()))
+                        .map(|(cid, &c)| (cid.as_char(), c))
+                        .collect();
+                    entries.sort_by(|a, b| b.1.cmp(&a.1));
+                    let max_w = ui.available_width() - 140.0;
+                    egui::Grid::new("freq_grid")
+                        .striped(true)
+                        .min_col_width(30.0)
+                        .show(ui, |ui| {
+                            ui.strong("Char");
+                            ui.strong("Count");
+                            ui.strong("%");
+                            ui.strong("");
+                            ui.end_row();
+                            for (ch, count) in &entries {
+                                let pct = *count as f64 / total as f64 * 100.0;
+                                let label = if *ch == ' ' {
+                                    "⎵".to_string()
+                                } else {
+                                    ch.to_string()
+                                };
+                                ui.label(&label);
+                                ui.label(format!("{}", count));
+                                ui.label(format!("{:.2}%", pct));
+                                let bar_w = max_w * (pct as f32 / 100.0);
+                                ui.colored_label(
+                                    egui::Color32::from_rgb(
+                                        (255.0 * pct as f32 / 15.0).min(255.0) as u8,
+                                        100,
+                                        50,
+                                    ),
+                                    "█".repeat((bar_w / 8.0) as usize),
+                                );
                                 ui.end_row();
-                                for (ch, count) in entries.iter().take(40) {
-                                    let pct = *count as f64 / total as f64 * 100.0;
-                                    let label = if *ch == ' ' {
-                                        "⎵".to_string()
-                                    } else {
-                                        ch.to_string()
-                                    };
-                                    ui.label(&label);
-                                    ui.label(format!("{}", count));
-                                    ui.label(format!("{:.2}%", pct));
-                                    let bar_w = max_w * (pct as f32 / 100.0);
-                                    ui.colored_label(
-                                        egui::Color32::from_rgb(
-                                            (255.0 * pct as f32 / 15.0).min(255.0) as u8,
-                                            100,
-                                            50,
-                                        ),
-                                        "█".repeat((bar_w / 8.0) as usize),
-                                    );
-                                    ui.end_row();
-                                }
-                            });
-                    });
+                            }
+                        });
                 });
-            } else {
-                ui.label("(no data yet)");
-            }
-            drop(stats);
-        });
+        }
     }
 }
 
