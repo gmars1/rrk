@@ -52,6 +52,23 @@ jobs:
           find artifacts/ -type f
           echo "==========================="
 
+      - name: Flatten and rename artifacts
+        run: |
+          mkdir -p release-assets/
+          for dir in artifacts/*/; do
+            artifact_name="$(basename "$dir")"
+            for file in "$dir"*; do
+              base="$(basename "$file")"
+              if [[ "$base" == *.* ]]; then
+                cp "$file" "release-assets/${artifact_name}.${base##*.}"
+              else
+                cp "$file" "release-assets/${artifact_name}"
+              fi
+            done
+          done
+          echo "=== Release assets ==="
+          ls -la release-assets/
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -60,8 +77,7 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
-          files: |
-            artifacts/**/*
+          files: release-assets/*
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
