@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   push:
@@ -46,11 +46,8 @@ jobs:
       - name: Build
         run: cargo build --release
 
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: key-optimizer-ubuntu
-          path: target/release/key-optimizer
+      - name: Test
+        run: cargo test
 
   windows:
     runs-on: windows-latest
@@ -71,12 +68,6 @@ jobs:
 
       - name: Build
         run: cargo build --release
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: key-optimizer-windows
-          path: target/release/key-optimizer.exe
 
   arch:
     runs-on: ubuntu-latest
@@ -103,9 +94,3 @@ jobs:
 
       - name: Build
         run: cargo build --release
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: key-optimizer-arch
-          path: target/release/key-optimizer
