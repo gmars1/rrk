@@ -7,7 +7,7 @@ use key_optimizer::platform::{create_listener, CoreEvent};
 use key_optimizer::storage;
 use key_optimizer::ui::App;
 
-fn load_builtin_layouts() -> Vec<PhysicalKeyboard> {
+fn load_layouts() -> Vec<PhysicalKeyboard> {
     let mut keyboards = Vec::new();
     let builtins = [
         include_str!("assets/layouts/qwerty.json"),
@@ -20,6 +20,11 @@ fn load_builtin_layouts() -> Vec<PhysicalKeyboard> {
             if !keyboards.iter().any(|k: &PhysicalKeyboard| k.id == kb.id) {
                 keyboards.push(kb);
             }
+        }
+    }
+    for kb in key_optimizer::storage::load_custom_layouts() {
+        if !keyboards.iter().any(|k: &PhysicalKeyboard| k.id == kb.id) {
+            keyboards.push(kb);
         }
     }
     keyboards
@@ -44,7 +49,7 @@ fn build_mappings(kb: &PhysicalKeyboard) -> std::collections::HashMap<u16, char>
 }
 
 fn run_daemon() -> Result<(), Box<dyn std::error::Error>> {
-    let keyboards = load_builtin_layouts();
+    let keyboards = load_layouts();
     let kb = keyboards.first().expect("No keyboard layouts found");
     let sc_map = build_mappings(kb);
 
@@ -89,7 +94,7 @@ fn run_daemon() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn run_ui() -> Result<(), Box<dyn std::error::Error>> {
-    let keyboards = load_builtin_layouts();
+    let keyboards = load_layouts();
     let stats = storage::load_stats();
     let mut listener = create_listener()?;
     let rx = listener.subscribe();

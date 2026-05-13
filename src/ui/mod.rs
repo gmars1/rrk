@@ -10,6 +10,9 @@ use crate::core::layout::LayoutState;
 use crate::core::stats::LanguageStats;
 use crate::platform::{CoreEvent, Listener};
 
+pub mod editor;
+use editor::{EditorAction, KeyboardEditor};
+
 pub struct App {
     keyboards: Vec<PhysicalKeyboard>,
     current_index: usize,
@@ -23,6 +26,8 @@ pub struct App {
     last_event_time: Instant,
     evdev_alive: bool,
     show_freq: bool,
+    show_editor: bool,
+    editor: Option<KeyboardEditor>,
 }
 
 impl App {
@@ -74,6 +79,8 @@ impl App {
             last_event_time: Instant::now(),
             evdev_alive: false,
             show_freq: false,
+            show_editor: false,
+            editor: None,
         }
         .auto_detect_layout()
     }
@@ -185,6 +192,43 @@ impl eframe::App for App {
         self.process_events();
         self.process_egui_input(ctx);
         self.maintain();
+
+        if self.show_editor {
+            let action = self
+                .editor
+                .as_mut()
+                .map(|e| e.show(ctx))
+                .unwrap_or(EditorAction::None);
+            match action {
+                EditorAction::Back => {
+                    self.show_editor = false;
+                    self.editor = None;
+                }
+                EditorAction::Save => {
+                    let saved = self.editor.as_ref().map(|e| {
+                        let mut kb = e.keyboard.clone();
+                        kb.build_index();
+                        kb
+                    });
+                    if let Some(kb) = saved {
+                        crate::storage::save_layout(&kb);
+                        if let Some(pos) = self.keyboards.iter().position(|k| k.id == kb.id) {
+                            self.keyboards[pos] = kb.clone();
+                        } else {
+                            self.keyboards.push(kb.clone());
+                        }
+                        if let Some(new_idx) = self.keyboards.iter().position(|k| k.id == kb.id) {
+                            self.switch_layout(new_idx);
+                        }
+                    }
+                    self.show_editor = false;
+                    self.editor = None;
+                }
+                _ => {}
+            }
+            return;
+        }
+
         ctx.request_repaint_after(Duration::from_millis(100));
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -206,6 +250,12 @@ impl eframe::App for App {
                 ui.separator();
                 if ui.button("📊").clicked() {
                     self.show_freq = !self.show_freq;
+                }
+                ui.separator();
+                if ui.button("+ Create").clicked() {
+                    let template = self.current_keyboard().clone();
+                    self.show_editor = true;
+                    self.editor = Some(KeyboardEditor::new(&template));
                 }
             });
         });
