@@ -4,6 +4,8 @@ Keyboard layout heatmap tracker and layout optimizer. Records your typing patter
 
 ![example](imgs/example.png)
 
+![custom](imgs/custom_keyboard.png)
+
 ## OS support overview
 
 | Feature | Linux | macOS | Windows |
