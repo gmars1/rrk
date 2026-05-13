@@ -312,7 +312,7 @@ impl KeyboardEditor {
             .unwrap_or(400.0);
 
         let total_size = egui::vec2(max_x + 40.0, max_y + 40.0);
-        let (response, painter) = ui.allocate_painter(total_size, egui::Sense::click());
+        let (response, painter) = ui.allocate_painter(total_size, egui::Sense::click_and_drag());
         let origin = response.rect.min + egui::vec2(20.0, 20.0);
 
         let mut key_rects: Vec<(usize, egui::Rect)> = Vec::new();
@@ -352,6 +352,27 @@ impl KeyboardEditor {
                 egui::FontId::proportional(14.0),
                 egui::Color32::WHITE,
             );
+        }
+
+        if response.dragged() {
+            if self.selected_id.is_none() {
+                let pos = ui.ctx().input(|i| i.pointer.interact_pos());
+                if let Some(pos) = pos {
+                    for (id, rect) in &key_rects {
+                        if rect.contains(pos) {
+                            self.selected_id = Some(*id);
+                            break;
+                        }
+                    }
+                }
+            }
+            if let Some(sel_id) = self.selected_id {
+                if let Some(key) = self.keyboard.keys.iter_mut().find(|k| k.id == sel_id) {
+                    let delta = response.drag_delta();
+                    key.x += delta.x / step;
+                    key.y += delta.y / step;
+                }
+            }
         }
 
         if response.clicked() {
