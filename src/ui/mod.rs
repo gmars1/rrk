@@ -248,11 +248,10 @@ impl eframe::App for App {
                 let total = self.stats.lock().unwrap().total_events();
                 ui.label(format!("Events: {}", total));
                 ui.separator();
-                if ui.button("📊").clicked() {
+                if ui.button("\u{1F4CA}").clicked() {
                     self.show_freq = !self.show_freq;
                 }
-                ui.separator();
-                if ui.button("+ Create").clicked() {
+                if ui.button("Create Keyboard").clicked() {
                     let template = self.current_keyboard().clone();
                     self.show_editor = true;
                     self.editor = Some(KeyboardEditor::new(&template));
