@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on tags like v1.0.0, v2.1.0, etc.
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  # Download all artifacts from the latest successful build on master
+  gather-artifacts:
+    name: Gather Build Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      # Find the latest successful workflow run on master
+      - name: Find latest build
+        id: find-build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build.yml',
+              branch: 'master',
+              status: 'success',
+              per_page: 1
+            });
+            
+            if (runs.data.workflow_runs.length === 0) {
+              core.setFailed('No successful build found on master branch');
+              return;
+            }
+            
+            const runId = runs.data.workflow_runs[0].id;
+            core.setOutput('run-id', runId);
+            console.log(`Found build run: ${runId}`);
+
+      # Download artifacts from that build run
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.find-build.outputs.run-id }}
+          github-token: ${{ github.token }}
+          path: artifacts/
+
+      # List downloaded artifacts (for debugging)
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      # Create GitHub Release
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/**/*          # Upload everything from artifacts folder
