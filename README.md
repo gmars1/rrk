@@ -1,8 +1,14 @@
 # key-optimizer
 
-Keyboard layout heatmap tracker and layout optimizer. Records your typing patterns, displays a live color-coded heatmap, and uses simulated annealing to find better key arrangements.
+Keyboard layout heatmap tracker and layout optimizer. Records your typing patterns, displays a live color-coded heatmap.
+
+---
+
+## Live heatmap visualization
 
 ![example](imgs/example.png)
+
+## Custom keyboard geometry
 
 ![custom](imgs/custom_keyboard.png)
 
