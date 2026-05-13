@@ -251,15 +251,20 @@ impl eframe::App for App {
                 if ui.button("\u{1F4CA}").clicked() {
                     self.show_freq = !self.show_freq;
                 }
-                if ui.button("Create Keyboard").clicked() {
-                    let template = self.current_keyboard().clone();
-                    self.show_editor = true;
-                    self.editor = Some(KeyboardEditor::new(&template));
-                }
             });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("Create Keyboard").clicked() {
+                        let template = self.current_keyboard().clone();
+                        self.show_editor = true;
+                        self.editor = Some(KeyboardEditor::new(&template));
+                    }
+                });
+            });
+            ui.add_space(4.0);
             self.draw_heatmap(ui);
         });
 
