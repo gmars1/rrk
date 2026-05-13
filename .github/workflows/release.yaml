@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,29 +30,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libevdev-dev \
-            libegl1-mesa-dev \
-            libgles2-mesa-dev \
-            libglib2.0-dev \
-            libxkbcommon-dev \
-            libwayland-dev \
-            libx11-dev \
-            libxcursor-dev \
-            libxi-dev \
-            libxrandr-dev
-
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Build
-        run: cargo build --release
-
-      - name: Upload release asset
+      - uses: ./.github/actions/build
+        with:
+          os: ubuntu
+      - name: Upload
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -67,14 +47,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Build
-        run: cargo build --release
-
-      - name: Upload release asset
+      - uses: ./.github/actions/build
+        with:
+          os: windows
+      - name: Upload
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -85,33 +61,15 @@ jobs:
   arch:
     needs: create
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
+    container: archlinux:latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm \
-            rust \
-            libevdev \
-            libglvnd \
-            glib2 \
-            libxkbcommon \
-            wayland \
-            libx11 \
-            libxcursor \
-            libxi \
-            libxrandr \
-            mesa
-
-      - name: Build
-        run: cargo build --release
-
-      - name: Upload release asset
+      - uses: ./.github/actions/build
+        with:
+          os: arch
+      - name: Upload
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

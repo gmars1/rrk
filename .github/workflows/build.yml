@@ -15,37 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libevdev-dev \
-            libegl1-mesa-dev \
-            libgles2-mesa-dev \
-            libglib2.0-dev \
-            libxkbcommon-dev \
-            libwayland-dev \
-            libx11-dev \
-            libxcursor-dev \
-            libxi-dev \
-            libxrandr-dev
-
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Cache cargo
-        uses: actions/cache@v4
+      - uses: ./.github/actions/build
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-
-      - name: Build
-        run: cargo build --release
-
+          os: ubuntu
       - name: Test
         run: cargo test
 
@@ -53,44 +25,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Cache cargo
-        uses: actions/cache@v4
+      - uses: ./.github/actions/build
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-
-      - name: Build
-        run: cargo build --release
+          os: windows
 
   arch:
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
+    container: archlinux:latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm \
-            rust \
-            libevdev \
-            libglvnd \
-            glib2 \
-            libxkbcommon \
-            wayland \
-            libx11 \
-            libxcursor \
-            libxi \
-            libxrandr \
-            mesa
-
-      - name: Build
-        run: cargo build --release
+      - uses: ./.github/actions/build
+        with:
+          os: arch

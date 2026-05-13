@@ -1,0 +1,63 @@
+name: Build key-optimizer
+description: Install deps and build key-optimizer for a given OS
+
+inputs:
+  os:
+    description: Target OS (ubuntu, windows, arch)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      shell: bash
+      if: inputs.os == 'ubuntu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libevdev-dev \
+          libegl1-mesa-dev \
+          libgles2-mesa-dev \
+          libglib2.0-dev \
+          libxkbcommon-dev \
+          libwayland-dev \
+          libx11-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libxrandr-dev
+
+    - name: Install system dependencies (Arch)
+      shell: bash
+      if: inputs.os == 'arch'
+      run: |
+        pacman -Syu --noconfirm
+        pacman -S --noconfirm \
+          rust \
+          libevdev \
+          libglvnd \
+          glib2 \
+          libxkbcommon \
+          wayland \
+          libx11 \
+          libxcursor \
+          libxi \
+          libxrandr \
+          mesa
+
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      if: inputs.os != 'arch'
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      if: inputs.os != 'arch'
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build
+      shell: bash
+      run: cargo build --release
