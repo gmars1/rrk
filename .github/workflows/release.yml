@@ -10,69 +10,65 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build
+        with:
+          os: ubuntu
+      - name: Rename binary
+        run: cp target/release/key-optimizer key-optimizer-ubuntu
+      - uses: actions/upload-artifact@v4
+        with:
+          name: key-optimizer-ubuntu
+          path: key-optimizer-ubuntu
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build
+        with:
+          os: windows
+      - name: Rename binary
+        shell: bash
+        run: cp target/release/key-optimizer.exe key-optimizer-windows.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: key-optimizer-windows.exe
+          path: key-optimizer-windows.exe
+
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build
+        with:
+          os: arch
+      - run: cp target/release/key-optimizer key-optimizer-arch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: key-optimizer-arch
+          path: key-optimizer-arch
+
   create:
+    needs: [ubuntu, windows, arch]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
             --title "Release ${{ github.ref_name }}" \
-            --generate-notes
-
-  ubuntu:
-    needs: create
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build
-        with:
-          os: ubuntu
-      - name: Upload
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cp target/release/key-optimizer key-optimizer-ubuntu
-          gh release upload "${{ github.ref_name }}" key-optimizer-ubuntu --clobber
-
-  windows:
-    needs: create
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build
-        with:
-          os: windows
-      - name: Upload
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          cp target/release/key-optimizer.exe key-optimizer-windows.exe
-          gh release upload "${{ github.ref_name }}" key-optimizer-windows.exe --clobber
-
-  arch:
-    needs: create
-    runs-on: ubuntu-latest
-    container: archlinux:latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build
-        with:
-          os: arch
-      - name: Upload
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cp target/release/key-optimizer key-optimizer-arch
-          gh release upload "${{ github.ref_name }}" key-optimizer-arch --clobber
+            --generate-notes \
+            artifacts/key-optimizer-ubuntu/key-optimizer-ubuntu \
+            artifacts/key-optimizer-windows.exe/key-optimizer-windows.exe \
+            artifacts/key-optimizer-arch/key-optimizer-arch
