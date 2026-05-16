@@ -24,6 +24,10 @@ Keyboard layout heatmap tracker and layout optimizer. Records your typing patter
 
 **Note:** macOS and Windows platform listeners are stubs that emit dummy events. Real keystroke capture is only implemented on Linux. The GUI still works everywhere — you can type into the window and see heatmap updates.
 
+## Download
+
+go to releases page: https://github.com/gmars1/rKeyboard/releases/latest
+
 ## Build
 
 Requires [Rust](https://rustup.rs/) (edition 2021).
